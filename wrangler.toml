@@ -1,0 +1,20 @@
+name = "yahoo-opportunities"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database for storing scan results
+[[d1_databases]]
+binding = "DB"
+database_name = "yahoo-opportunities"
+database_id = "916ef938-a0d4-498c-a08f-362ea7afd60d"
+
+# API key to call Yahoo Reporting Worker
+[[secrets_store_secrets]]
+binding = "FWP_YAHOO_REPORTING_API_KEY"
+store_id = "8602c0b6a1d94696971a2aedf8afdfd9"
+secret_name = "FWP_YAHOO_REPORTING_API_KEY"
+
+# Cron: checks every minute for pending scans
+[triggers]
+crons = ["* * * * *"]
