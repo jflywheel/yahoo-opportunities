@@ -5,6 +5,7 @@ interface SecretStoreSecret {
 
 interface Env {
   DB: D1Database;
+  YAHOO_REPORTING: Fetcher; // Service binding to yahoo-report-worker
   FWP_YAHOO_REPORTING_API_KEY: SecretStoreSecret;
 }
 
@@ -74,13 +75,18 @@ function isOurPublisher(publisher: string): boolean {
 
 // --- Yahoo Reporting API ---
 
+// Uses the service binding to call Yahoo Reporting Worker directly (no public URL needed)
 async function fetchHighValueTickers(
-  apiKey: string,
+  env: Env,
   limit: number = 200
 ): Promise<TickerStats[]> {
-  const res = await fetch(
-    "https://yahoo-report-worker.helmsdeep.workers.dev/api/ticker-stats",
-    { headers: { "X-API-Key": apiKey } }
+  const apiKey = await env.FWP_YAHOO_REPORTING_API_KEY.get();
+
+  // Service binding fetch uses relative URL, routed directly to the bound worker
+  const res = await env.YAHOO_REPORTING.fetch(
+    new Request("https://yahoo-report-worker/api/ticker-stats", {
+      headers: { "X-API-Key": apiKey },
+    })
   );
 
   if (!res.ok) {
@@ -147,9 +153,8 @@ async function runScan(runId: number, env: Env): Promise<void> {
     .run();
 
   try {
-    // Get the API key and fetch high-value tickers
-    const apiKey = await env.FWP_YAHOO_REPORTING_API_KEY.get();
-    const tickers = await fetchHighValueTickers(apiKey);
+    // Fetch high-value tickers via service binding to Yahoo Reporting Worker
+    const tickers = await fetchHighValueTickers(env);
 
     await db
       .prepare("UPDATE runs SET tickers_total = ? WHERE id = ?")
