@@ -323,6 +323,19 @@ function renderDashboard(
     .past-runs { font-size: 12px; color: #8e8e93; }
     .past-runs a { color: #0a84ff; text-decoration: none; }
     .empty { color: #8e8e93; text-align: center; padding: 40px; }
+    .copy-btn {
+      background: rgba(255,255,255,0.08); color: #0a84ff; border: 1px solid rgba(255,255,255,0.15);
+      padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;
+      white-space: nowrap; transition: background 0.2s;
+    }
+    .copy-btn:hover { background: rgba(255,255,255,0.15); }
+    .copy-btn.copied { background: rgba(48,209,88,0.2); color: #30d158; border-color: #30d158; }
+    .bulk-copy-btn {
+      background: #ff9f0a; color: #000; border: none; padding: 10px 20px;
+      border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600;
+    }
+    .bulk-copy-btn:hover { background: #ffb340; }
+    .bulk-copy-btn.copied { background: #30d158; }
   </style>
 </head>
 <body>
@@ -371,7 +384,10 @@ function renderDashboard(
   ${
     opportunities.length > 0
       ? `
-  <div class="section-title" style="color:#ff9f0a">Opportunities (Not in Top 5)</div>
+  <div style="display:flex;align-items:center;gap:16px;margin:24px 0 12px;flex-wrap:wrap">
+    <div class="section-title" style="color:#ff9f0a;margin:0">Opportunities (Not in Top 5)</div>
+    <button class="bulk-copy-btn" onclick="copyBulk(this)">Copy First 10 for JCVC</button>
+  </div>
   <div class="card" style="padding:0;overflow-x:auto">
     <table>
       <thead>
@@ -380,6 +396,7 @@ function renderDashboard(
           <th>Ticker</th>
           <th>Median Views</th>
           <th>Top 5 Publishers on Yahoo</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -391,6 +408,7 @@ function renderDashboard(
           <td><span class="ticker">${r.ticker}</span></td>
           <td class="views">${Number(r.median_views).toLocaleString()}</td>
           <td class="publisher-list">${formatPublishers(r.top_publishers)}</td>
+          <td><button class="copy-btn" onclick="copySingle(this, '${r.ticker}')">Copy for JCVC</button></td>
         </tr>`
           )
           .join("")}
@@ -464,7 +482,6 @@ function renderDashboard(
         const res = await fetch('/api/run', { method: 'POST' });
         const data = await res.json();
         if (data.run_id) {
-          // Start polling for updates
           pollStatus();
         }
       } catch (err) {
@@ -473,6 +490,28 @@ function renderDashboard(
         this.textContent = 'Run Scan';
       }
     });
+
+    // Copy prompt for a single ticker
+    function copySingle(btn, ticker) {
+      const prompt = 'I want to publish an article about ' + ticker + ' for now using JP Voice. Select the most appropriate series for it. Select one or two, but no more than that, relevant tickers to add to the story.';
+      navigator.clipboard.writeText(prompt).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy for JCVC'; btn.classList.remove('copied'); }, 2000);
+      });
+    }
+
+    // Copy prompt for first 10 opportunities
+    function copyBulk(btn) {
+      const tickers = ${JSON.stringify(opportunities.slice(0, 10).map((r: any) => r.ticker))};
+      const tickerList = tickers.map((t, i) => (i + 1) + '. ' + t).join('\\n');
+      const prompt = 'Make an article about each one of the below tickers using JP Voice. Select the most appropriate series for each. Select one or two, but no more than that, relevant tickers to add to each story.\\n\\n' + tickerList;
+      navigator.clipboard.writeText(prompt).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy First 10 for JCVC'; btn.classList.remove('copied'); }, 2000);
+      });
+    }
 
     // Auto-refresh if scan is running
     ${
