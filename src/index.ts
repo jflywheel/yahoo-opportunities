@@ -586,6 +586,13 @@ export default {
     try {
       // POST /api/run - Start a new scan
       if (url.pathname === "/api/run" && request.method === "POST") {
+        // Auto-expire runs stuck for more than 20 minutes
+        await env.DB.prepare(
+          `UPDATE runs SET status = 'failed', error = 'Timed out'
+           WHERE (status = 'running' OR status = 'pending')
+           AND started_at < datetime('now', '-20 minutes')`
+        ).run();
+
         // Check if a scan is already running
         const existing = await env.DB.prepare(
           "SELECT id FROM runs WHERE status = 'running' OR status = 'pending' LIMIT 1"
